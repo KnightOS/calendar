@@ -15,7 +15,7 @@
 name:
     .db "calendar", 0
 description:
-    .db "An application to view the current date and time", 0
+    .db "An application to view a calendar", 0
 
 start:
     kld(de, corelib_path)
@@ -27,104 +27,25 @@ start:
     
     ; Allocate and clear a buffer to store the contents of the screen
     pcall(allocScreenBuffer)
+
+
+.loop:
     pcall(clearBuffer)
     
     kld(hl, window_title)
     xor a
     corelib(drawWindow)
-
-.loop:
+    
     ; get the current time as in Tue 2014-11-11 15:04:32
     ;                             A   IX  L  H  B  C  H
     pcall(getTime)
     
     cp errUnsupported
-    kjp(z, .unsupported)
-
-.drawDate:
+    kjp(z, unsupported)
     
-    ; first, draw the year (that is actually pretty complicated since drawDecHL
-    ; is not implemented yet)
-    
-    push hl
-        ; get the year in hl
-        push ix
-        pop hl
-        
-        ; subtract 1900 from it and put the result in a
-        ld de, -1900
-        add hl, de
-        ld a, l
-        
-        ; if a >= 100 we have year "20.."
-        cp 100
-        ld de, 0x0208
-        jr nc, .drawYear2000
-
-.drawYear1900:
-        ld de, 0x0a08
-        kcall(drawDecAPadded)
-        
-        ; "19"
-        ld a, '1'
-        ld de, 0x0208
-        pcall(drawChar)
-        ld a, '9'
-        ld de, 0x0608
-        pcall(drawChar)
-        
-        jr .endDrawYear
-
-.drawYear2000:
-        sub 100
-        ld de, 0x0a08
-        kcall(drawDecAPadded)
-        
-        ; "20"
-        ld a, '2'
-        ld de, 0x0208
-        pcall(drawChar)
-        ld a, '0'
-        ld de, 0x0608
-        pcall(drawChar)
-
-.endDrawYear:
-    pop hl
-    
-    ; now, draw the month and day
-    ld a, l
-    inc a
-    ld de, 0x1608
-    kcall(drawDecAPadded)
-    ld a, h
-    inc a
-    ld de, 0x2208
-    kcall(drawDecAPadded)
-    
-    ; the dashes
-    ld a, '-'
-    ld de, 0x1208
-    pcall(drawChar)
-    ld de, 0x1e08
-    pcall(drawChar)
-
-.drawTime:
-    ld a, b
-    ld de, 0x0210
-    kcall(drawDecAPadded)
-    ld a, c
-    ld de, 0x0c10
-    kcall(drawDecAPadded)
-    ld a, h
-    ld de, 0x1610
-    kcall(drawDecAPadded)
-    
-    ; the colons
-    ld a, ':'
-    ld de, 0x0a10
-    pcall(drawChar)
-    ld de, 0x1410
-    pcall(drawChar)
+    ld b, 6
+    ld e, 31
+    kcall(drawCalendar)
 
 .waitForKey:
     ; update the screen
@@ -141,7 +62,7 @@ start:
     ; otherwise, exit
     ret
 
-.unsupported:
+unsupported:
     kld(hl, clock_unsupported_1)
     ld de, 0x0208
     pcall(drawStr)
@@ -157,13 +78,80 @@ start:
     pcall(flushKeys)
     
     cp kMODE
-    jr nz, .unsupported
+    jr nz, unsupported
     
     ret
 
 
-; Draws A (assumed < 100) as a decimal number, padded with a leading zero if it
-; is < 10.
+;; drawCalendar
+;;   Draws the calendar of the given month.
+;; Inputs:
+;;    B: day of the week of the first day (0-6); alternatively, the number of
+;;       grid cells to leave blank in the beginning of the month
+;;    E: number of days in the month
+;;    F: selected day
+;; Destroys:
+;;    A, C, D, F, H, L, ...
+drawCalendar:
+    
+    ; first figure out if we need a 5-row or a 6-row grid
+    ; 6-row grid iff a + e >= 36
+    ld a, b
+    add a, e
+    cp 36
+    jr nc, +_
+    ; 5-row grid
+    ld l, 12 ; y-coordinate of top of vertical lines
+    ld c, 39 ; height of vertical lines
+    jr ++_
+_:  ; 6-row grid
+    ld l, 8
+    ld c, 47
+_:
+    
+    ; draw vertical lines
+    ld a, 23
+    
+.verticalLineLoop:
+    pcall(drawVLine)
+    add a, 10
+    cp 74
+    jr c, .verticalLineLoop
+    
+    ; draw horizontal lines
+    ld a, l
+    add a, 7
+    ld l, a
+    
+.horizontalLineLoop:
+    ; TODO rewrite this if/when a kernel function drawHLine is available
+    ld a, 8
+    
+    push hl
+        pcall(getPixel)
+        ld (hl), 0b00000011
+        inc hl \ ld (hl), 0xff
+        inc hl \ ld (hl), 0xff
+        inc hl \ ld (hl), 0xff
+        inc hl \ ld (hl), 0xff
+        inc hl \ ld (hl), 0xff
+        inc hl \ ld (hl), 0xff
+        inc hl \ ld (hl), 0xff
+        inc hl \ ld (hl), 0xff
+        inc hl \ ld (hl), 0b11100000
+    pop hl
+    
+    ld a, l
+    add a, 8
+    ld l, a
+    cp 48
+    jr c, .horizontalLineLoop
+    
+    ret
+
+
+; Draws A (assumed < 100) as a decimal number, padded with leading whitespace
+; if it is < 10.
 drawDecAPadded:
     
     cp 10
@@ -171,8 +159,9 @@ drawDecAPadded:
     
     ; do padding
     push af
-        ld a, '0'
-        pcall(drawChar)
+        ld a, d
+        add a, 4
+        ld d, a
     pop af
 
 .noPadding:
@@ -180,8 +169,9 @@ drawDecAPadded:
     ret
 
 
+; strings
 window_title:
-    .db "Calendar", 0
+    .db "Calendar  -  Nov 2014", 0 ; TODO remove month suffix
 corelib_path:
     .db "/lib/core", 0
 
@@ -190,5 +180,17 @@ clock_unsupported_1:
 clock_unsupported_2:
     .db "on this calculator :(", 0
 
-colon:
-    .db ":", 0
+; names of the months
+months:
+    .db "Jan", 0
+    .db "Feb", 0
+    .db "Mar", 0
+    .db "Apr", 0
+    .db "May", 0
+    .db "Jun", 0
+    .db "Jul", 0
+    .db "Aug", 0
+    .db "Sep", 0
+    .db "Oct", 0
+    .db "Nov", 0
+    .db "Dec", 0
