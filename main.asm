@@ -43,6 +43,7 @@ start:
     cp errUnsupported
     kjp(z, unsupported)
     
+    ; TODO calculate these from the current month
     ld b, 6
     ld e, 31
     kcall(drawCalendar)
@@ -108,7 +109,6 @@ _:  ; 6-row grid
     ld l, 8
     ld c, 47
 _:
-    
     ; draw vertical lines
     ld a, 23
     
@@ -119,33 +119,87 @@ _:
     jr c, .verticalLineLoop
     
     ; draw horizontal lines
-    ld a, l
-    add a, 7
-    ld l, a
-    
-.horizontalLineLoop:
-    ; TODO rewrite this if/when a kernel function drawHLine is available
-    ld a, 8
-    
+    ; (save l, since we need it later for the text)
     push hl
-        pcall(getPixel)
-        ld (hl), 0b00000011
-        inc hl \ ld (hl), 0xff
-        inc hl \ ld (hl), 0xff
-        inc hl \ ld (hl), 0xff
-        inc hl \ ld (hl), 0xff
-        inc hl \ ld (hl), 0xff
-        inc hl \ ld (hl), 0xff
-        inc hl \ ld (hl), 0xff
-        inc hl \ ld (hl), 0xff
-        inc hl \ ld (hl), 0b11100000
+        
+        ld a, l
+        add a, 7
+        ld l, a
+      
+.horizontalLineLoop:
+        ; TODO rewrite this if/when a kernel function drawHLine is available
+        ld a, 8
+        
+        push hl
+            pcall(getPixel)
+            ld (hl), 0b00000011
+            inc hl \ ld (hl), 0xff
+            inc hl \ ld (hl), 0xff
+            inc hl \ ld (hl), 0xff
+            inc hl \ ld (hl), 0xff
+            inc hl \ ld (hl), 0xff
+            inc hl \ ld (hl), 0xff
+            inc hl \ ld (hl), 0xff
+            inc hl \ ld (hl), 0xff
+            inc hl \ ld (hl), 0b11100000
+        pop hl
+        
+        ld a, l
+        add a, 8
+        ld l, a
+        cp 48
+        jr c, .horizontalLineLoop
+    
     pop hl
     
-    ld a, l
-    add a, 8
-    ld l, a
-    cp 48
-    jr c, .horizontalLineLoop
+    ; draw the labels
+    ; x-position of the first one is 10 b + 15
+    xor a
+    add a, b     ;  1 b
+    add a, a     ;  2 b
+    add a, a     ;  4 b
+    add a, b     ;  5 b
+    add a, a     ; 10 b
+    add a, 15    ; 10 b + 15
+    ld d, a
+    
+    ; rescue e (number of days in the month)
+    ld h, e
+    inc h
+    
+    ; y-coordinate of the first label
+    ld e, l
+    inc e
+    
+    ld a, 1
+    
+.labelLoop:
+    push af \ push de
+        kcall(drawDecAPadded)
+    pop de \ pop af
+    
+    push af
+        ld a, d
+        add a, 10
+        
+        ; if x-coordinate > 75, we need to move to the next line
+        cp 76
+        jr c, .notToNextLine
+        
+        ld a, 15
+        push af
+            ld a, e
+            add a, 8
+            ld e, a
+        pop af
+        
+.notToNextLine:
+        ld d, a
+    pop af
+    
+    inc a
+    cp h
+    jr c, .labelLoop
     
     ret
 
