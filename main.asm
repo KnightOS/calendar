@@ -106,6 +106,7 @@ _:  kld(a, (selected_month))
         inc a
         kld((selected_day), a)
     pop af
+    kjp(.drawEverything)
 _:  cp kLeft
     jr nz, +_
     push af
@@ -113,6 +114,7 @@ _:  cp kLeft
         dec a
         kld((selected_day), a)
     pop af
+    kjp(.drawEverything)
 _:  cp kUp
     jr nz, +_
     push af
@@ -120,6 +122,7 @@ _:  cp kUp
         sub a, 7
         kld((selected_day), a)
     pop af
+    kjp(.drawEverything)
 _:  cp kDown
     jr nz, +_
     push af
@@ -127,13 +130,13 @@ _:  cp kDown
         add a, 7
         kld((selected_day), a)
     pop af
+    kjp(.drawEverything)
 _:  
-    ; if it is not MODE, draw everything again
     cp kMode
-    kjp(nz, .drawEverything)
-    
-    ; otherwise, exit
+    jr nz, +_
     ret
+_:  
+    kjp(.waitForKey)
 
 
 unsupported:
