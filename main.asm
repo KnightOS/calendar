@@ -48,11 +48,36 @@ start:
     xor a
     corelib(drawWindow)
     
+    ; determine the weekday the month starts with
     kld(hl, (selected_year))
     kcall(weekdayYearStart)
+    ld a, b
+    kld((start_weekday), a)
+    ld a, c
+    kld((is_leap_year), a)
     
-    ld e, 31
-    dec b ; put Monday in the first column to not confuse me - TODO make this an option
+    ; determine the length of the month
+    cp 1
+    jr z, +_
+    kld(hl, month_length_non_leap)
+    jr ++_
+_:  kld(hl, month_length_leap)
+_:  kld(a, (selected_month))
+    ld b, 0
+    ld c, a
+    add hl, bc
+    ld a, (hl)
+    ld e, a
+    
+    ; draw the actual calendar
+    kld(a, (start_weekday))
+    ld b, a
+    
+    ; TODO dec b if the user wants Monday to be the first day of the week
+    
+    kld(a, (is_leap_year))
+    ld c, a
+    
     kcall(drawCalendar)
 
 .waitForKey:
@@ -63,6 +88,35 @@ start:
     corelib(appWaitKey)
     pcall(flushKeys)
     
+    cp kRight
+    jr nz, +_
+    push af
+        kld(a, (selected_day))
+        inc a
+        kld((selected_day), a)
+    pop af
+_:  cp kLeft
+    jr nz, +_
+    push af
+        kld(a, (selected_day))
+        dec a
+        kld((selected_day), a)
+    pop af
+_:  cp kUp
+    jr nz, +_
+    push af
+        kld(a, (selected_day))
+        sub a, 7
+        kld((selected_day), a)
+    pop af
+_:  cp kDown
+    jr nz, +_
+    push af
+        kld(a, (selected_day))
+        add a, 7
+        kld((selected_day), a)
+    pop af
+_:  
     ; if it is not MODE, draw everything again
     cp kMode
     kjp(nz, .drawEverything)
@@ -279,8 +333,7 @@ _:
                 ld c, 7
                 pcall(divHLByC)
             pop bc
-            add a, b
-            ld b, a
+            ld b, a ; store intermediate result in b
         pop hl
         
         ; 4 (hl % 100)
@@ -363,8 +416,13 @@ selected_month:
     .db 0
 selected_day:
     .db 0
+start_weekday:
+    .db 0
+is_leap_year:
+    .db 0
 
 ; strings
+
 window_title:
     .db "Calendar", 0
 corelib_path:
@@ -373,22 +431,8 @@ corelib_path:
 clock_unsupported_message:
     .db "Clock isn't sup-\nported on this\ncalculator.", 0
 clock_unsupported_options:
-    .db 1, "Quit program", 0
-
-; names of the months
-months:
-    .db "Jan", 0
-    .db "Feb", 0
-    .db "Mar", 0
-    .db "Apr", 0
-    .db "May", 0
-    .db "Jun", 0
-    .db "Jul", 0
-    .db "Aug", 0
-    .db "Sep", 0
-    .db "Oct", 0
-    .db "Nov", 0
-    .db "Dec", 0
+    .db 1
+    .db "Quit program", 0
 
 ; lengths of the months
 month_length_non_leap:
@@ -402,3 +446,18 @@ month_start_weekday_non_leap:
     .db 0, 3, 3, 6, 1, 4, 6, 2, 5, 0, 3, 5
 month_start_weekday_leap:
     .db 0, 3, 4, 0, 2, 5, 0, 3, 6, 1, 4, 6
+
+; names of the months
+month_names:
+    .db "Jan", 0
+    .db "Feb", 0
+    .db "Mar", 0
+    .db "Apr", 0
+    .db "May", 0
+    .db "Jun", 0
+    .db "Jul", 0
+    .db "Aug", 0
+    .db "Sep", 0
+    .db "Oct", 0
+    .db "Nov", 0
+    .db "Dec", 0
