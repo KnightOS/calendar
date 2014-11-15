@@ -52,7 +52,9 @@ start:
     
     ; determine the weekday the month starts with
     kld(hl, (selected_year))
-    kcall(weekdayYearStart)
+    kld(a, (selected_month))
+    ld e, a
+    kcall(weekdayMonthStart)
     ld a, b
     kld((start_weekday), a)
     ld a, c
@@ -401,6 +403,38 @@ _:      sub a, 7
         ld b, a
         
     pop hl \ pop de
+    
+    ret
+
+
+;; weekdayMonthStart
+;;   Computes the weekday of 1 January of a given year in the Gregorian
+;;   calendar. Also checks whether the year is a leap year or not.
+;; Inputs:
+;;   HL: the year
+;;    E: the month
+;; Outputs:
+;;    B: the weekday (0-6, 0 = Sunday, 6 = Saturday) of 1 January of the year
+;;    C: indicates whether the year is a leap year or not (1 if leap; 0 if
+;;       non-leap)
+;; Destroys:
+;;   A
+;; Notes:
+;;   This simply uses [weekdayYearStart], plus some offsets for the months.
+weekdayMonthStart:
+    kcall(weekdayYearStart)
+    
+    push de
+        kld(hl, month_start_weekday_non_leap) ; TODO leap years!
+        ld d, 0
+        add hl, de
+        ld a, (hl)
+        add a, b
+        cp 7
+        jr c, +_
+        sub a, 7
+_:      ld b, a
+    pop de
     
     ret
 
