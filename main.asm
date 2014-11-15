@@ -48,8 +48,18 @@ start:
     xor a
     corelib(drawWindow)
     
+    kcall(normalizeSelectedDate)
+    
+    ; determine the weekday the month starts with
+    kld(hl, (selected_year))
+    kcall(weekdayYearStart)
+    ld a, b
+    kld((start_weekday), a)
+    ld a, c
+    kld((is_leap_year), a)
+    
     ; draw the month name
-    ld de, 0x5301
+    ld de, 0x4201
     kld(hl, month_names)
     kld(a, (selected_month))
     add a, a ; 2x
@@ -59,13 +69,11 @@ start:
     add hl, bc
     pcall(drawStrXOR)
     
-    ; determine the weekday the month starts with
+    ; draw the year
+    ld de, 0x0208
     kld(hl, (selected_year))
-    kcall(weekdayYearStart)
-    ld a, b
-    kld((start_weekday), a)
-    ld a, c
-    kld((is_leap_year), a)
+    ld a, l
+    pcall(drawDecA)
     
     ; determine the length of the month
     cp 1
@@ -78,6 +86,7 @@ _:  kld(a, (selected_month))
     ld c, a
     add hl, bc
     ld a, (hl)
+    kld((selected_month_length), a)
     ld e, a
     
     ; draw the actual calendar
@@ -101,35 +110,27 @@ _:  kld(a, (selected_month))
     
     cp kRight
     jr nz, +_
-    push af
-        kld(a, (selected_day))
-        inc a
-        kld((selected_day), a)
-    pop af
+    kld(a, (selected_day))
+    inc a
+    kld((selected_day), a)
     kjp(.drawEverything)
 _:  cp kLeft
     jr nz, +_
-    push af
-        kld(a, (selected_day))
-        dec a
-        kld((selected_day), a)
-    pop af
+    kld(a, (selected_day))
+    dec a
+    kld((selected_day), a)
     kjp(.drawEverything)
 _:  cp kUp
     jr nz, +_
-    push af
-        kld(a, (selected_day))
-        sub a, 7
-        kld((selected_day), a)
-    pop af
+    kld(a, (selected_day))
+    sub a, 7
+    kld((selected_day), a)
     kjp(.drawEverything)
 _:  cp kDown
     jr nz, +_
-    push af
-        kld(a, (selected_day))
-        add a, 7
-        kld((selected_day), a)
-    pop af
+    kld(a, (selected_day))
+    add a, 7
+    kld((selected_day), a)
     kjp(.drawEverything)
 _:  
     cp kMode
@@ -423,6 +424,58 @@ drawDecAPadded:
     ret
 
 
+; Normalizes the variables containing the selected date. That is, this
+; subroutine for example changes "0 January 1997" to "31 December 1996".
+; This should be called after every cursor movement.
+normalizeSelectedDate:
+    
+    kld(a, (selected_day))
+    ld d, a
+    kld(a, (selected_month))
+    ld e, a
+    kld(hl, (selected_year))
+    
+    kld(a, (selected_month_length))
+    ld b, a
+    
+    ; correct underflowed day
+    ld a, d
+    cp 128
+    jr c, +_
+    dec e
+    add a, b ; TODO this should be the duration of the previous month, not this month!
+    ld d, a
+_:  
+    ; correct overflowed day
+    ld a, d
+    cp b
+    jr c, +_
+    sub a, b
+    ld d, a
+    inc e
+_:  
+    ; correct underflowed month
+    ld a, e
+    cp 128
+    jr c, +_
+    dec hl
+    add a, 12
+_:  
+    ; correct overflowed month
+    cp 12
+    jr c, +_
+    inc hl
+    sub a, 12
+_:  ld e, a
+    
+    ld a, d
+    kld((selected_day), a)
+    ld a, e
+    kld((selected_month), a)
+    kld((selected_year), hl)
+    ret
+
+
 ; variables
 selected_year:
     .db 0, 0
@@ -433,6 +486,8 @@ selected_day:
 start_weekday:
     .db 0
 is_leap_year:
+    .db 0
+selected_month_length:
     .db 0
 
 ; strings
