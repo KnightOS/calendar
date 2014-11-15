@@ -30,14 +30,16 @@ start:
     ;                             A   IX  L  H  B  C  H
     pcall(getTime)
     
+    ; to test the code path for calculators with no clocks:
+    ; ld a, errUnsupported
+    cp errUnsupported
+    kjp(z, unsupported)
+    
     kld((selected_year), ix)
     ld a, l
     kld((selected_month), a)
     ld a, h
     kld((selected_day), a)
-    
-    cp errUnsupported
-    kjp(z, unsupported)
 
 .drawEverything:
     pcall(clearBuffer)
@@ -70,22 +72,16 @@ start:
 
 
 unsupported:
-    kld(hl, clock_unsupported_1)
-    ld de, 0x0208
-    pcall(drawStr)
-    kld(hl, clock_unsupported_2)
-    ld de, 0x0210
-    pcall(drawStr)
     
-    ; update the screen
-    pcall(fastCopy)
+    kld(hl, window_title)
+    xor a
+    corelib(drawWindow)
     
-    ; wait for a key
-    corelib(appWaitKey)
-    pcall(flushKeys)
-    
-    cp kMODE
-    jr nz, unsupported
+    kld(hl, clock_unsupported_message)
+    kld(de, clock_unsupported_options)
+    ld a, 0
+    ld b, 0
+    corelib(showMessage)
     
     ret
 
@@ -370,14 +366,14 @@ selected_day:
 
 ; strings
 window_title:
-    .db "Calendar  -  Jan 2014", 0 ; TODO remove month suffix
+    .db "Calendar", 0
 corelib_path:
     .db "/lib/core", 0
 
-clock_unsupported_1:
-    .db "Clock is not supported", 0
-clock_unsupported_2:
-    .db "on this calculator :(", 0
+clock_unsupported_message:
+    .db "Clock isn't sup-\nported on this\ncalculator.", 0
+clock_unsupported_options:
+    .db 1, "Quit program", 0
 
 ; names of the months
 months:
