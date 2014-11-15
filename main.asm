@@ -48,6 +48,17 @@ start:
     xor a
     corelib(drawWindow)
     
+    ; draw the month name
+    ld de, 0x5301
+    kld(hl, month_names)
+    kld(a, (selected_month))
+    add a, a ; 2x
+    add a, a ; 4x
+    ld b, 0
+    ld c, a
+    add hl, bc
+    pcall(drawStrXOR)
+    
     ; determine the weekday the month starts with
     kld(hl, (selected_year))
     kcall(weekdayYearStart)
