@@ -21,31 +21,42 @@ start:
     kld(de, corelib_path)
     pcall(loadLibrary)
     
-    ; Get a lock on the devices we intend to use
     pcall(getLcdLock)
     pcall(getKeypadLock)
     
-    ; Allocate and clear a buffer to store the contents of the screen
     pcall(allocScreenBuffer)
+    
+    ; get the current time as in Tue 2014-11-11 15:04:32
+    ;                             A   IX  L  H  B  C  H
+    pcall(getTime)
+    
+    ; d = day (0-30)
+    ; e = month (0-11)
+    ; hl = year
+    ld d, h
+    ld e, l
+    push ix
+    pop hl
+    
+    cp errUnsupported
+    kjp(z, unsupported)
 
-
-.loop:
+.drawEverything:
     pcall(clearBuffer)
     
     kld(hl, window_title)
     xor a
     corelib(drawWindow)
     
-    ; get the current time as in Tue 2014-11-11 15:04:32
-    ;                             A   IX  L  H  B  C  H
-    pcall(getTime)
+    ld hl, 2014
+    kcall(weekdayYearStart)
     
-    cp errUnsupported
-    kjp(z, unsupported)
+    ld a, c
+    ld de, 0x0208
+    pcall(drawDecA)
     
-    ; TODO calculate these from the current month
-    ld b, 6
     ld e, 31
+    dec b ; put Monday in the first column to not confuse me - TODO make this an option
     kcall(drawCalendar)
 
 .waitForKey:
@@ -58,10 +69,11 @@ start:
     
     ; if it is not MODE, draw everything again
     cp kMode
-    kjp(nz, .loop)
+    kjp(nz, .drawEverything)
     
     ; otherwise, exit
     ret
+
 
 unsupported:
     kld(hl, clock_unsupported_1)
@@ -204,6 +216,116 @@ _:
     ret
 
 
+;; weekdayYearStart
+;;   Computes the weekday of 1 January of a given year in the Gregorian
+;;   calendar. Also checks whether the year is a leap year or not.
+;; Inputs:
+;;   HL: the year
+;; Outputs:
+;;    B: the weekday (0-6, 0 = Sunday, 6 = Saturday) of 1 January of the year
+;;    C: indicates whether the year is a leap year or not (1 if leap; 0 if
+;;       non-leap)
+;; Destroys:
+;;   A
+;; Notes:
+;;   This uses a formula proposed by Gauss. See
+;;   http://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week#Gauss.27_algorithm
+;;   Interleaved with this calculation, it is determined whether we are dealing
+;;   with a leap year or not.
+weekdayYearStart:
+    push de \ push hl
+        
+        ; c will be zero if it is a leap year; non-zero otherwise
+        ld c, 0
+        
+        dec hl
+        
+        ; (1 + 5 (hl % 4) + 4 (hl % 100) + 6 (hl % 400)) % 7
+        
+        ; 6 (hl % 400)
+        ld de, -400
+_:      add hl, de
+        jr c, -_
+        ld de, 400
+        add hl, de
+        
+        ; if hl = 399, the year was divisible by 400, so increase c
+        ld a, h
+        cp 1
+        jr nz, +_
+        ld a, l
+        cp 399-256
+        jr nz, +_
+        inc c
+_:      
+        push hl
+            ld d, h
+            ld e, l
+            add hl, hl ; 2x
+            add hl, de ; 3x
+            add hl, hl ; 6x
+            push bc
+                ld c, 7
+                pcall(divHLByC)
+            pop bc
+            add a, b
+            ld b, a
+        pop hl
+        
+        ; 4 (hl % 100)
+        ld de, -100
+_:      add hl, de
+        jr c, -_
+        ld de, 100
+        add hl, de
+        
+        ; if hl = 99, the year was divisible by 100, so decrease c
+        ld a, h
+        cp 0
+        jr nz, +_
+        ld a, l
+        cp 99
+        jr nz, +_
+        dec c
+_:      
+        push hl
+            add hl, hl ; 2x
+            add hl, hl ; 4x
+            push bc
+                ld c, 7
+                pcall(divHLByC)
+            pop bc
+            add a, b
+            ld b, a
+        pop hl
+        
+        ; 5 (hl % 4)
+        ld a, l
+        and 0b00000011
+        ; if a = 3, the year was divisible by 4, so increase c
+        cp 3
+        jr nz, +_
+        inc c
+_:      
+        ld l, a
+        add a, a ; 2x
+        add a, a ; 4x
+        add a, l ; 5x
+        add a, b
+        
+        ; the +1, and divide by 7
+        inc a
+_:      sub a, 7
+        jr nc, -_
+        add a, 7
+        
+        ld b, a
+        
+    pop hl \ pop de
+    
+    ret
+
+
 ; Draws A (assumed < 100) as a decimal number, padded with leading whitespace
 ; if it is < 10.
 drawDecAPadded:
@@ -225,7 +347,7 @@ drawDecAPadded:
 
 ; strings
 window_title:
-    .db "Calendar  -  Nov 2014", 0 ; TODO remove month suffix
+    .db "Calendar  -  Jan 2014", 0 ; TODO remove month suffix
 corelib_path:
     .db "/lib/core", 0
 
@@ -248,3 +370,10 @@ months:
     .db "Oct", 0
     .db "Nov", 0
     .db "Dec", 0
+
+; weekday data for the months: this contains the weekday that starts a month in
+; a year that starts on a Sunday (0)
+month_start_weekday_non_leap:
+    .db 0, 3, 3, 6, 1, 4, 6, 2, 5, 0, 3, 5
+month_start_weekday_leap:
+    .db 0, 3, 4, 0, 2, 5, 0, 3, 6, 1, 4, 6
