@@ -30,13 +30,11 @@ start:
     ;                             A   IX  L  H  B  C  H
     pcall(getTime)
     
-    ; d = day (0-30)
-    ; e = month (0-11)
-    ; hl = year
-    ld d, h
-    ld e, l
-    push ix
-    pop hl
+    kld((selected_year), ix)
+    ld a, l
+    kld((selected_month), a)
+    ld a, h
+    kld((selected_day), a)
     
     cp errUnsupported
     kjp(z, unsupported)
@@ -48,12 +46,8 @@ start:
     xor a
     corelib(drawWindow)
     
-    ld hl, 2014
+    kld(hl, (selected_year))
     kcall(weekdayYearStart)
-    
-    ld a, c
-    ld de, 0x0208
-    pcall(drawDecA)
     
     ld e, 31
     dec b ; put Monday in the first column to not confuse me - TODO make this an option
@@ -102,9 +96,8 @@ unsupported:
 ;;    B: day of the week of the first day (0-6); alternatively, the number of
 ;;       grid cells to leave blank in the beginning of the month
 ;;    E: number of days in the month
-;;    F: selected day
 ;; Destroys:
-;;    A, C, D, F, H, L, ...
+;;    everything
 drawCalendar:
     
     ; first figure out if we need a 5-row or a 6-row grid
@@ -186,9 +179,31 @@ _:
     ld a, 1
     
 .labelLoop:
-    push af \ push de
-        kcall(drawDecAPadded)
-    pop de \ pop af
+    push af \ push de \ push bc
+        
+        ; draw the number
+        push af \ push de
+            kcall(drawDecAPadded)
+        pop de \ pop af
+        
+        ; if this is the selected day, invert colors
+        ld b, a
+        kld(a, (selected_day))
+        inc a  ; selected_day is 0-based
+        cp b
+        jr nz, .notSelected
+        push bc \ push hl
+            ld l, e
+            dec l
+            ld e, d
+            dec e
+            ld c, 9
+            ld b, 7
+            pcall(rectXOR)
+        pop hl \ pop bc
+.notSelected:
+        ld a, b
+    pop bc \ pop de \ pop af
     
     push af
         ld a, d
@@ -345,6 +360,14 @@ drawDecAPadded:
     ret
 
 
+; variables
+selected_year:
+    .db 0, 0
+selected_month:
+    .db 0
+selected_day:
+    .db 0
+
 ; strings
 window_title:
     .db "Calendar  -  Jan 2014", 0 ; TODO remove month suffix
@@ -370,6 +393,12 @@ months:
     .db "Oct", 0
     .db "Nov", 0
     .db "Dec", 0
+
+; lengths of the months
+month_length_non_leap:
+    .db 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+month_length_leap:
+    .db 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
 
 ; weekday data for the months: this contains the weekday that starts a month in
 ; a year that starts on a Sunday (0)
