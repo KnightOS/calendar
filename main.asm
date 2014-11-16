@@ -61,7 +61,7 @@ start:
     kld((is_leap_year), a)
     
     ; draw the month name
-    ld de, 0x4201
+    ld de, 0x4101
     kld(hl, month_names)
     kld(a, (selected_month))
     add a, a ; 2x
@@ -72,12 +72,24 @@ start:
     pcall(drawStrXOR)
     
     ; draw the year
-    ld de, 0x0208
+    ld e, 0x4f
+    ld l, 0
+    ld c, 16
+    ld b, 8
+    pcall(rectXOR)
+    
+    ld de, 0x4f01
     kld(hl, (selected_year))
-    ld a, l
-    pcall(drawDecA)
+    kcall(drawYear)
+    
+    ld e, 0x4f
+    ld l, 0
+    ld c, 16
+    ld b, 8
+    pcall(rectXOR)
     
     ; determine the length of the month
+    kld(a, (is_leap_year))
     cp 1
     jr z, +_
     kld(hl, month_length_non_leap)
@@ -133,6 +145,19 @@ _:  cp kDown
     kld(a, (selected_day))
     add a, 7
     kld((selected_day), a)
+    kjp(.drawEverything)
+_:  
+    cp kF2
+    jr nz, +_
+    kld(hl, (selected_year))
+    dec hl
+    kld((selected_year), hl)
+    kjp(.drawEverything)
+_:  cp kF4
+    jr nz, +_
+    kld(hl, (selected_year))
+    inc hl
+    kld((selected_year), hl)
     kjp(.drawEverything)
 _:  
     cp kMode
@@ -425,8 +450,13 @@ weekdayMonthStart:
     kcall(weekdayYearStart)
     
     push de
-        kld(hl, month_start_weekday_non_leap) ; TODO leap years!
-        ld d, 0
+        ld a, c
+        cp 0
+        jr z, +_
+        kld(hl, month_start_weekday_leap)
+        jr ++_
+_:      kld(hl, month_start_weekday_non_leap)
+_:      ld d, 0
         add hl, de
         ld a, (hl)
         add a, b
@@ -455,6 +485,44 @@ drawDecAPadded:
 
 .noPadding:
     pcall(drawDecA)
+    ret
+
+
+; Draws A (assumed < 100) as a decimal number, padded with a single zero ('0')
+; if it is < 10.
+drawDecAPaddedZero:
+    
+    cp 10
+    jr nc, .noPadding
+    
+    ; do padding
+    push af
+        ld a, '0'
+        pcall(drawChar)
+    pop af
+
+.noPadding:
+    pcall(drawDecA)
+    ret
+
+
+;; drawYear
+;;   Draws the number of the current year.
+;; Inputs:
+;;   HL: the year
+;;    D: the x-position
+;;    E: the y-position
+drawYear:
+    
+    ld c, 100
+    pcall(divHLByC)
+    
+    ld h, a
+    ld a, l
+    kcall(drawDecAPadded)
+    ld a, h
+    kcall(drawDecAPaddedZero)
+    
     ret
 
 
