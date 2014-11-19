@@ -7,7 +7,7 @@
     .db KEXC_STACK_SIZE
     .dw 20
     .db KEXC_NAME
-    .dw name
+    .dw window_title
     .db KEXC_DESCRIPTION
     .dw description
     .db KEXC_HEADER_END
