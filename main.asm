@@ -42,14 +42,7 @@ start:
     kld((selected_day), a)
     
     ; determine the weekday the month starts with
-    kld(hl, (selected_year))
-    kld(a, (selected_month))
-    ld e, a
-    kcall(weekdayMonthStart)
-    ld a, b
-    kld((start_weekday), a)
-    ld a, c
-    kld((is_leap_year), a)
+    kcall(updateMonthData)
 
 .drawEverything:
     pcall(clearBuffer)
