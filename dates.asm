@@ -124,8 +124,6 @@ _:
 ;; Destroys:
 ;;   A
 updateMonthData:
-    kcall(monthLength)
-    kld((selected_month_length), a)
     
     push bc
         kcall(weekdayMonthStart)
@@ -133,6 +131,9 @@ updateMonthData:
         kld((start_weekday), a)
         ld a, c
         kld((is_leap_year), a)
+        
+        kcall(monthLength)
+        kld((selected_month_length), a)
     pop bc
     
     ret
@@ -153,9 +154,8 @@ monthLength:
         kld(hl, month_length_non_leap)
         jr ++_
     _:  kld(hl, month_length_leap)
-    _:  ld a, e
-        ld b, 0
-        ld c, a
+    _:  ld b, 0
+        ld c, e
         add hl, bc
         ld a, (hl)
     pop bc \ pop hl

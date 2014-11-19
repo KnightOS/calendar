@@ -340,4 +340,3 @@ drawYear:
     kcall(drawDecAPaddedZero)
     
     ret
-
