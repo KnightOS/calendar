@@ -40,15 +40,6 @@ start:
     kld((selected_month), a)
     ld a, h
     kld((selected_day), a)
-
-.drawEverything:
-    pcall(clearBuffer)
-    
-    kld(hl, window_title)
-    xor a
-    corelib(drawWindow)
-    
-    kcall(normalizeSelectedDate)
     
     ; determine the weekday the month starts with
     kld(hl, (selected_year))
@@ -59,6 +50,15 @@ start:
     kld((start_weekday), a)
     ld a, c
     kld((is_leap_year), a)
+
+.drawEverything:
+    pcall(clearBuffer)
+    
+    kld(hl, window_title)
+    xor a
+    corelib(drawWindow)
+    
+    kcall(normalizeSelectedDate)
     
     ; draw the month name
     ld de, 0x4101
@@ -89,17 +89,10 @@ start:
     pcall(rectXOR)
     
     ; determine the length of the month
+    kld(a, (selected_month))
+    ld e, a
     kld(a, (is_leap_year))
-    cp 1
-    jr z, +_
-    kld(hl, month_length_non_leap)
-    jr ++_
-_:  kld(hl, month_length_leap)
-_:  kld(a, (selected_month))
-    ld b, 0
-    ld c, a
-    add hl, bc
-    ld a, (hl)
+    kcall(monthLength)
     kld((selected_month_length), a)
     ld e, a
     
@@ -449,7 +442,7 @@ _:      sub a, 7
 weekdayMonthStart:
     kcall(weekdayYearStart)
     
-    push de
+    push hl \ push de
         ld a, c
         cp 0
         jr z, +_
@@ -464,7 +457,7 @@ _:      ld d, 0
         jr c, +_
         sub a, 7
 _:      ld b, a
-    pop de
+    pop de \ pop hl
     
     ret
 
@@ -526,7 +519,8 @@ drawYear:
     ret
 
 
-; Normalizes the variables containing the selected date. That is, this
+; Normalizes the variables containing the selected date, and also updates
+; selected_month_length, start_weekday and is_leap_year. That is, this
 ; subroutine for example changes "0 January 1997" to "31 December 1996".
 ; This should be called after every cursor movement.
 normalizeSelectedDate:
@@ -544,37 +538,135 @@ normalizeSelectedDate:
     ld a, d
     cp 128
     jr c, +_
-    dec e
-    add a, b ; TODO this should be the duration of the previous month, not this month!
-    ld d, a
+    kcall(toPreviousMonth)
+    jr .done
 _:  
     ; correct overflowed day
     ld a, d
     cp b
     jr c, +_
-    sub a, b
-    ld d, a
-    inc e
+    kcall(toNextMonth)
 _:  
-    ; correct underflowed month
-    ld a, e
-    cp 128
-    jr c, +_
-    dec hl
-    add a, 12
-_:  
-    ; correct overflowed month
-    cp 12
-    jr c, +_
-    inc hl
-    sub a, 12
-_:  ld e, a
     
+.done:
     ld a, d
     kld((selected_day), a)
     ld a, e
     kld((selected_month), a)
     kld((selected_year), hl)
+    ret
+
+
+;; toPreviousMonth
+;;   Decreases selected_month and updates selected_month_length, start_weekday
+;;   and is_leap_year.
+;; Inputs:
+;;    D: the day (0-30)
+;;    E: the month (0-11)
+;;   HL: the year
+;; Outputs:
+;;    D: updated day
+;;    E: updated month
+;;   HL: updated year
+;; Destroys:
+;;   A
+toPreviousMonth:
+    
+    ; decrease the month
+    dec e
+    
+    ; if the month is < 0, go to the previous year
+    ld a, e
+    cp 128
+    jr c, +_
+    add a, 12
+    ld e, a
+    dec hl
+_:  
+    ; update selected_month_length, start_weekday, is_leap_year
+    kcall(monthLength)
+    kld((selected_month_length), a)
+    
+    kcall(weekdayMonthStart)
+    ld a, b
+    kld((start_weekday), a)
+    ld a, c
+    kld((is_leap_year), a)
+    
+    ; update the selected day
+    kld(a, (selected_month_length))
+    add a, d
+    ld d, a
+    
+    ret
+
+
+;; toNextMonth
+;;   Increases selected_month and updates selected_month_length, start_weekday
+;;   and is_leap_year.
+;; Inputs:
+;;    D: the day (0-30)
+;;    E: the month (0-11)
+;;   HL: the year
+;; Outputs:
+;;    D: updated day
+;;    E: updated month
+;;   HL: updated year
+;; Destroys:
+;;   A
+toNextMonth:
+    
+    ; increase the month
+    inc e
+    
+    ; update the selected day
+    kld(a, (selected_month_length))
+    sub a, d
+    neg
+    ld d, a
+    
+    ; if the month is >= 12, go to the next year
+    ld a, e
+    cp 12
+    jr c, +_
+    sub a, 12
+    ld e, a
+    inc hl
+_:  
+    ; update selected_month_length, start_weekday, is_leap_year
+    kcall(monthLength)
+    kld((selected_month_length), a)
+    
+    kcall(weekdayMonthStart)
+    ld a, b
+    kld((start_weekday), a)
+    ld a, c
+    kld((is_leap_year), a)
+    
+    ret
+
+
+;; monthLength
+;;   Determines the number of days in the given month.
+;; Inputs:
+;;    E: the month (0-11)
+;;    A: indicates whether the year is a leap year or not (1 if leap; 0 if
+;;       non-leap)
+;; Outputs:
+;;    A: the length of the month
+monthLength:
+    push hl \ push bc
+        cp 1
+        jr z, +_
+        kld(hl, month_length_non_leap)
+        jr ++_
+    _:  kld(hl, month_length_leap)
+    _:  ld a, e
+        ld b, 0
+        ld c, a
+        add hl, bc
+        ld a, (hl)
+    pop bc \ pop hl
     ret
 
 
