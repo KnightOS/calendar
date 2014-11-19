@@ -144,14 +144,25 @@ _:
     ; F2, F4 (previous / next year)
     cp kF2
     jr nz, +_
+    kld(a, (selected_day))
+    ld d, a
+    kld(a, (selected_month))
+    ld e, a
     kld(hl, (selected_year))
     dec hl
+    kcall(updateMonthData)
     kld((selected_year), hl)
     kjp(.drawEverything)
-_:  cp kF4
+_:  
+    cp kF4
     jr nz, +_
+    kld(a, (selected_day))
+    ld d, a
+    kld(a, (selected_month))
+    ld e, a
     kld(hl, (selected_year))
     inc hl
+    kcall(updateMonthData)
     kld((selected_year), hl)
     kjp(.drawEverything)
 _:  
