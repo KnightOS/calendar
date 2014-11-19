@@ -115,6 +115,7 @@ start:
     corelib(appWaitKey)
     pcall(flushKeys)
     
+    ; arrow keys (move selected day)
     cp kRight
     jr nz, +_
     kld(a, (selected_day))
@@ -140,6 +141,7 @@ _:  cp kDown
     kld((selected_day), a)
     kjp(.drawEverything)
 _:  
+    ; F2, F4 (previous / next year)
     cp kF2
     jr nz, +_
     kld(hl, (selected_year))
@@ -153,6 +155,7 @@ _:  cp kF4
     kld((selected_year), hl)
     kjp(.drawEverything)
 _:  
+    ; MODE (quit)
     cp kMode
     jr nz, +_
     ret
@@ -584,14 +587,7 @@ toPreviousMonth:
     dec hl
 _:  
     ; update selected_month_length, start_weekday, is_leap_year
-    kcall(monthLength)
-    kld((selected_month_length), a)
-    
-    kcall(weekdayMonthStart)
-    ld a, b
-    kld((start_weekday), a)
-    ld a, c
-    kld((is_leap_year), a)
+    kcall(updateMonthData)
     
     ; update the selected day
     kld(a, (selected_month_length))
@@ -634,14 +630,34 @@ toNextMonth:
     inc hl
 _:  
     ; update selected_month_length, start_weekday, is_leap_year
+    kcall(updateMonthData)
+    
+    ret
+
+
+;; updateMonthData
+;;   Updates selected_month_length, start_weekday and is_leap_year.
+;; Inputs:
+;;    D: the day (0-30)
+;;    E: the month (0-11)
+;;   HL: the year
+;; Outputs:
+;;    D: updated day
+;;    E: updated month
+;;   HL: updated year
+;; Destroys:
+;;   A
+updateMonthData:
     kcall(monthLength)
     kld((selected_month_length), a)
     
-    kcall(weekdayMonthStart)
-    ld a, b
-    kld((start_weekday), a)
-    ld a, c
-    kld((is_leap_year), a)
+    push bc
+        kcall(weekdayMonthStart)
+        ld a, b
+        kld((start_weekday), a)
+        ld a, c
+        kld((is_leap_year), a)
+    pop bc
     
     ret
 
