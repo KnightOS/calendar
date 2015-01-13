@@ -27,7 +27,7 @@ start:
     pcall(allocScreenBuffer)
     
     ; get the current time as in Tue 2014-11-11 15:04:32
-    ;                             A   IX  L  H  B  C  H
+    ;                             A   IX  L  H  B  C  D
     pcall(getTime)
     
     ; to test the code path for calculators with no clocks:
