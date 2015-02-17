@@ -1,3 +1,3 @@
 name=Calendar
-icon=/share/icons/calendar.kio
+icon=/share/icons/calendar.img
 exec=/bin/calendar
