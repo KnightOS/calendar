@@ -26,15 +26,23 @@ start:
     
     pcall(allocScreenBuffer)
     
+    ; if the RTC is supported, use that time as the default,
+    ; otherwise default to 2015-01-01 00:00
+    pcall(clockSupported)
+    ; to test the code path for calculators with no clocks:
+    ; jr .notSupported
+    jr nz, .notSupported
+    
     ; get the current time as in Tue 2014-11-11 15:04:32
     ;                             A   IX  L  H  B  C  D
     pcall(getTime)
+    jr .setTimeVariables
     
-    ; to test the code path for calculators with no clocks:
-    ; ld a, errUnsupported
-    cp errUnsupported
-    kjp(z, unsupported)
+.notSupported:
+    ld ix, 2015
+    ld hl, 0
     
+.setTimeVariables:
     kld((selected_year), ix)
     ld a, l
     kld((selected_month), a)
@@ -167,21 +175,6 @@ _:
     kjp(.waitForKey)
 
 
-unsupported:
-    
-    kld(hl, window_title)
-    xor a
-    corelib(drawWindow)
-    
-    kld(hl, clock_unsupported_message)
-    kld(de, clock_unsupported_options)
-    ld a, 0
-    ld b, 0
-    corelib(showMessage)
-    
-    ret
-
-
 #include "graphics.asm"
 #include "dates.asm"
 
@@ -206,12 +199,6 @@ window_title:
     .db "Calendar", 0
 corelib_path:
     .db "/lib/core", 0
-
-clock_unsupported_message:
-    .db "Clock isn't sup-\nported on this\ncalculator.", 0
-clock_unsupported_options:
-    .db 1
-    .db "Quit program", 0
 
 ; lengths of the months
 month_length_non_leap:
