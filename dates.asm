@@ -124,7 +124,6 @@ _:
 ;; Destroys:
 ;;   A
 updateMonthData:
-    
     push bc
         kcall(weekdayMonthStart)
         ld a, b
@@ -132,14 +131,14 @@ updateMonthData:
         ld a, c
         kld((is_leap_year), a)
         
-        kcall(monthLength)
+        kcall(monthLength2)
         kld((selected_month_length), a)
     pop bc
     
     ret
 
 
-;; monthLength
+;; monthLength2
 ;;   Determines the number of days in the given month.
 ;; Inputs:
 ;;    E: the month (0-11)
@@ -147,7 +146,7 @@ updateMonthData:
 ;;       non-leap)
 ;; Outputs:
 ;;    A: the length of the month
-monthLength:
+monthLength2:
     push hl \ push bc
         cp 1
         jr z, +_

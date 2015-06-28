@@ -93,7 +93,7 @@ start:
     kld(a, (selected_month))
     ld e, a
     kld(a, (is_leap_year))
-    kcall(monthLength)
+    kcall(monthLength2)
     kld((selected_month_length), a)
     ld e, a
     
