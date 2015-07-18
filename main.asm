@@ -112,6 +112,11 @@ month_names:
     .db "Dec", 0
 
 ; menu strings
-menu_main:
+menu_monthview:
     .db 1
+    .db "Quit", 0
+menu_dayview:
+    .db 3
+    .db "New appointment", 0
+    .db "Month view", 0
     .db "Quit", 0

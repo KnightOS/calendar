@@ -1,11 +1,14 @@
+;; monthView
+;;   Displays the month view.
 monthView:
+    
+    kcall(normalizeSelectedDate)
+    
     pcall(clearBuffer)
     
     kld(hl, window_title)
     ld a, 0b0100 ; draw the menu graphic
     corelib(drawWindow)
-    
-    kcall(normalizeSelectedDate)
     
     ; draw the month name
     ld de, 0x4001
@@ -119,15 +122,17 @@ _:
     ; F3 (show menu)
     cp kF3
     jr nz, .no_f3
-    kld(hl, menu_main)
-    ld c, 70
+    kld(hl, menu_monthview)
+    ld c, 40
     corelib(showMenu)
+    pcall(flushKeys)
     
     ; option 0: quit
     cp 0
     jr nz, +_
     ret
 _:
+    ; no option chosen
     kjp(monthView)
 .no_f3:
     
