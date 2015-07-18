@@ -8,7 +8,7 @@ monthView:
     kcall(normalizeSelectedDate)
     
     ; draw the month name
-    ld de, 0x4101
+    ld de, 0x4001
     kld(hl, month_names)
     kld(a, (selected_month))
     add a, a ; 2x
