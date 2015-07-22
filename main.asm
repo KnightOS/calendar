@@ -120,3 +120,35 @@ menu_dayview:
     .db "New appointment", 0
     .db "Month view", 0
     .db "Quit", 0
+
+; appointment data
+; TODO this is temporary until reading from the file system is implemented
+appointment_data:
+    .db 3 ; number of appointments
+    
+    ; appointment 1
+    .dw 1997 ; year
+    .db 0    ; month
+    .db 0    ; day
+    .db 14   ; hour
+    .db 15   ; minute
+    .db "Dentist", 0 \ .block 32 - 8 ; description
+    .db "42 Random St, Los Angeles", 0 \ .block 32 - 26 ; place
+    
+    ; appointment 2
+    .dw 1997 ; year
+    .db 0    ; month
+    .db 0    ; day
+    .db 12   ; hour
+    .db 00   ; minute
+    .db "Business presentation", 0 \ .block 32 - 22 ; description
+    .db "Main Building room 3.14", 0 \ .block 32 - 24 ; place
+    
+    ; appointment 3
+    .dw 1997 ; year
+    .db 0    ; month
+    .db 2    ; day
+    .db 16   ; hour
+    .db 00   ; minute
+    .db "Team meeting", 0 \ .block 32 - 13 ; description
+    .db "Main Building room 1.17", 0 \ .block 32 - 24 ; place

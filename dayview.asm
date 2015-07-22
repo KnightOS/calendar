@@ -56,10 +56,7 @@ dayView:
     ld b, 8
     pcall(rectXOR)
     
-.drawAppointments:
-    kld(hl, no_appointments)
-    ld de, 0x0208
-    pcall(drawStr)
+    kcall(drawAppointments)
     
 .waitForKey:
     ; update the screen
@@ -96,7 +93,7 @@ _:
     cp 0
     jr nz, +_
     kld(hl, appointments_not_supported_message)
-    kld(de, appointments_not_supported_options)
+    kld(de, only_dismiss_option)
     ld a, 0
     ld b, 0
     corelib(showMessage)
@@ -123,11 +120,82 @@ _:
 _:  
     kjp(.waitForKey)
 
+
+;; findAppointments
+;;   Finds all appointments of the current day. This method allocates space for
+;;   the list. It is the caller's responsibility to call the function free on
+;;   the list when it is not needed anymore. If the malloc call fails due to an
+;;   out-of-memory condition, a message is shown and B is set to zero.
+;; Outputs:
+;;    B: The number of appointments
+;;   IX: Address of the first byte of the list of appointments. The list
+;;       contains addresses of appointment data structures
+findAppointments:
+    
+    ; idea:
+    ; 1. figure out how many appointments there are
+    ; 2. allocate memory for that amount of appointments
+    ; 3. fill the list
+    ld c, 0
+    kld(hl, appointment_data)
+    ld a, (hl)
+    ld b, a
+    inc hl
+    
+.findLoop:
+    ; TODO if appointment is of today, increase c
+    ld a, (hl)
+    ld e, a
+    kld(a, (selected_year))
+    cp e
+    jr nz, .notToday
+    
+    inc hl
+    ld a, (hl)
+    ld e, a
+    kld(a, (selected_year + 1))
+    cp e
+    jr nz, .notToday
+    
+    
+    
+.notToday:
+    add hl, 70 ; size of an appointment data structure
+    djnz .findLoop
+    
+    ; multiply bc by 2, since addresses take 2 bytes
+    ex hl, bc
+    add hl, hl
+    ex hl, bc
+    pcall(malloc)
+    jr z, .noFailure
+    ld b, 0
+    kld(hl, out_of_memory_message)
+    kld(de, only_dismiss_option)
+    ld a, 0
+    ld b, 0
+    corelib(showMessage)
+    ret
+    
+.noFailure:
+    ; TODO put appointments in list
+    ret
+
+
+
+
+;     kld(hl, no_appointments)
+;     ld de, 0x0208
+;     pcall(drawStr)
+;     ret
+
 ; strings
 no_appointments:
     .db "No appointments.", 0
 appointments_not_supported_message:
     .db "Creating ap-\npointments is\nnot supported.", 0
-appointments_not_supported_options:
+out_of_memory_message:
+    .db "Out of memory!\nClose other\nprograms...", 0
+only_dismiss_option:
     .db 1
     .db "Dismiss", 0
