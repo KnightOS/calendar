@@ -41,8 +41,8 @@ monthView:
     ; determine the length of the month
     kld(a, (selected_month))
     ld e, a
-    kld(a, (is_leap_year))
-    kcall(monthLength2)
+    kld(hl, (selected_year))
+    pcall(monthLength)
     kld((selected_month_length), a)
     ld e, a
     

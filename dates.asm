@@ -131,33 +131,12 @@ updateMonthData:
         ld a, c
         kld((is_leap_year), a)
         
-        kcall(monthLength2)
+        push hl
+            pcall(monthLength)
+        pop hl
         kld((selected_month_length), a)
     pop bc
     
-    ret
-
-
-;; monthLength2
-;;   Determines the number of days in the given month.
-;; Inputs:
-;;    E: the month (0-11)
-;;    A: indicates whether the year is a leap year or not (1 if leap; 0 if
-;;       non-leap)
-;; Outputs:
-;;    A: the length of the month
-monthLength2:
-    push hl \ push bc
-        cp 1
-        jr z, +_
-        kld(hl, month_length_non_leap)
-        jr ++_
-    _:  kld(hl, month_length_leap)
-    _:  ld b, 0
-        ld c, e
-        add hl, bc
-        ld a, (hl)
-    pop bc \ pop hl
     ret
 
 
