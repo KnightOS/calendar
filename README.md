@@ -4,9 +4,9 @@ For more about KnightOS, see [knightos.org](http://knightos.org) or [its GitHub 
 
 Screenshots
 -----------
-![Screenshot of the application](https://cdn.mediacru.sh/hhDpQDpQQNI5.png)
+![Screenshot of the application](http://i.imgur.com/C8fH7PC.png)
 
-![Another screenshot](https://cdn.mediacru.sh/E1W6gZlg9P61.png)
+![Another screenshot](http://i.imgur.com/OT0nhOU.png)
 
 Planned features
 ----------------
