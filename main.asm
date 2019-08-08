@@ -50,6 +50,10 @@ start:
     kld((selected_day), a)
     
     ; determine the weekday the month starts with
+    push hl
+        push ix
+        pop hl
+    pop de
     kcall(updateMonthData)
     
     ; and start with the month view
